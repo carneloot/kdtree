@@ -38,7 +38,7 @@ int equal_points(const void *_a, const void *_b) {
 
 void printar_ponto(const Item _p) {
   struct Point *p = (struct Point *) _p;
-  printf("(%.0f, %.0f)\n", p->x, p->y);
+  printf("(%2.0f, %2.0f)\n", p->x, p->y);
 }
 
 int main() {
@@ -50,11 +50,25 @@ int main() {
   KDTree_t.insert(arv, newPoint(13, 15));
   KDTree_t.insert(arv, newPoint(9, 1));
   KDTree_t.insert(arv, newPoint(2, 7));
+  KDTree_t.insert(arv, newPoint(3, 15));
+  KDTree_t.insert(arv, newPoint(22, 17));
+  KDTree_t.insert(arv, newPoint(10, 17));
+  KDTree_t.insert(arv, newPoint(12, 15));
+  KDTree_t.insert(arv, newPoint(5, 7));
   KDTree_t.insert(arv, newPoint(10, 19));
 
   KDTree_t.passe_simetrico(arv, printar_ponto);
 
+  // Delecao
+  Point a = newPoint(10, 19);
+  KDTree_t.delete(arv, a);
+
+  printf("========\n");
+  KDTree_t.passe_simetrico(arv, printar_ponto);
+
   KDTree_t.destroy(arv, free);
+
+  free(a);
 
   return 0;
 }
