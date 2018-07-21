@@ -27,7 +27,8 @@ struct KDTree_t {
   KDTree (*delete)(KDTree this, Item value);
 
   /**
-   * Procura na arvore 'this' o nó com valor 'value'. Usa a funcao check_equal, passada ao criar a arvore
+   * Procura na arvore 'this' o nó com valor 'value'. Usa a funcao check_equal,
+   * passada ao criar a arvore
    */
   KDTree (*search)(KDTree this, Item value);
 
@@ -54,9 +55,13 @@ struct KDTree_t {
 
   /**
    * Pesquisa na arvore 'this' de acordo com um intervalo
+   * A funcao 'dentro' checa a posicao do item value de acordo com a dimensao
+   * 'dim'. Se 'dim' for -1, checa se o valor esta completamente dentro do
+   * intervalo
    */
-  KDTree (*range_search)(KDTree this, ...);
-
+  KDTree (*range_search)(
+    KDTree this, int (*dentro)(Item value, int dim, Item rect[]), ...);
+    
   /**
    * Destroi a arvore
    */

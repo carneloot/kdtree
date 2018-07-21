@@ -14,8 +14,6 @@ struct KDTree {
   func_compare *funcs;
 };
 
-// ===== HELPERS =====
-
 // ===== FUNCOES =====
 
 static KDTree __create_aux_kdtree(
@@ -214,8 +212,69 @@ static void __passe_simetrico_kdtree(
     __passe_simetrico_kdtree(this->right, executar);
 }
 
-static KDTree __range_search_kdtree(KDTree this, ...) {
-  return NULL;
+void __range_search_rec_kdtree(
+  KDTree _this,
+  KDTree saida,
+  Item rect[],
+  int (*dentro)(Item value, int dim, Item rect[]),
+  unsigned prof) {
+  struct KDTree *this = (struct KDTree *) _this;
+
+  if (!this)
+    return;
+
+  int local;
+  unsigned cd;
+
+  // Checa a posicao do atributo 'cd' em relacao com a area
+  cd    = prof % this->dim;
+  local = dentro(this->value, cd, rect);
+
+  // Esquerda
+  if (local < 0)
+    __range_search_rec_kdtree(this->right, saida, rect, dentro, prof + 1);
+
+  // Direita
+  else if (local > 0)
+    __range_search_rec_kdtree(this->left, saida, rect, dentro, prof + 1);
+
+  // Dentro
+  else {
+    __range_search_rec_kdtree(this->left, saida, rect, dentro, prof + 1);
+    __range_search_rec_kdtree(this->right, saida, rect, dentro, prof + 1);
+  }
+
+  if (dentro(this->value, -1, rect))  // Se o valor esta dentro do ponto
+    __insert_kdtree(saida, this->value);
+}
+
+KDTree __range_search_kdtree(
+  KDTree _this, int (*dentro)(Item value, int dim, Item rect[]), ...) {
+  struct KDTree *this = (struct KDTree *) _this;
+
+  KDTree saida;
+  Item *rect;
+  va_list list;
+
+  func_compare *funcs = calloc(this->dim, sizeof(func_compare));
+  for (int i = 0; i < this->dim; i++)
+    funcs[i] = this->funcs[i];
+
+  saida = __create_aux_kdtree(this->dim, this->check_equal, funcs);
+  rect  = calloc(this->dim, sizeof(Item));
+
+  va_start(list, dentro);
+
+  for (int i = 0; i < this->dim; i++)
+    rect[i] = va_arg(list, Item);
+
+  va_end(list);
+
+  __range_search_rec_kdtree(this, saida, rect, dentro, 0);
+
+  free(rect);
+
+  return saida;
 }
 
 static void __destroy_rec_kdtree(KDTree _this, void (*destroy)(Item item)) {
