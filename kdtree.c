@@ -333,11 +333,8 @@ static void __nearest_neighbor_rec_kdtree(
   dist_dimensao = distance(this->value, value, cd);
 
   // Cruza a linha que quebra
-  if (dist_dimensao < __closest_distance) {
+  if (dist_dimensao < __closest_distance)
     __nearest_neighbor_rec_kdtree(other, value, distance, prof + 1);
-    // __nearest_neighbor_rec_kdtree(this->left, value, distance, prof + 1);
-    // __nearest_neighbor_rec_kdtree(this->right, value, distance, prof + 1);
-  }
 }
 
 static Pair __nearest_neighbor_kdtree(
