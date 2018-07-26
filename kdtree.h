@@ -82,6 +82,9 @@ struct KDTree_t {
     Item value,
     double (*distance)(const Item a, const Item b, int dim));
 
+  Pair (*closest_pair)(
+    KDTree this, double (*distance)(const Item a, const Item b, int dim));
+
   /**
    * Destroi a arvore
    */

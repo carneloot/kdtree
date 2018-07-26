@@ -139,39 +139,49 @@ int main(int argc, const char *argv[]) {
   KDTree_t.insert(arv, newPoint(5, 6));
   KDTree_t.insert(arv, newPoint(4, 3));
   KDTree_t.insert(arv, newPoint(9, 8));
+  KDTree_t.insert(arv, newPoint(4.7, 7.8));
+  KDTree_t.insert(arv, newPoint(5.98, 2.77));
 
   // Testes
   printf("Todos os pontos:\n");
   KDTree_t.passe_simetrico(arv, printar_ponto);
 
   // Nearest neighbor
-  Point a = newPoint(strtod(argv[1], NULL), strtod(argv[2], NULL));
+  // Point a = newPoint(strtod(argv[1], NULL), strtod(argv[2], NULL));
 
-  printf("Ponto pesquisado: ");
-  printar_ponto(a, 0);
+  // printf("Ponto pesquisado: ");
+  // printar_ponto(a, 0);
 
-  Pair prox = KDTree_t.nearest_neighbor(arv, a, distance_squared);
+  // Pair prox = KDTree_t.nearest_neighbor(arv, a, distance_squared);
 
-  printf("Ponto encontrado: ");
-  printar_ponto(prox.point1, 0);
-  printf("Distancia: %.2f\n", prox.distance);
+  // printf("Ponto encontrado: ");
+  // printar_ponto(prox.point1, 0);
+  // printf("Distancia: %.2f\n", prox.distance);
 
-  free(a);
+  // free(a);
 
   // Range Search
-  /* Point A = newPoint(1.5, 1.5);
-  Point B = newPoint(5, 5);
+  // Point A = newPoint(1.5, 1.5);
+  // Point B = newPoint(5, 5);
 
-  Lista range = KDTree_t.range_search(arv, ponto_dentro, A, B);
-  Posic it    = Lista_t.get_first(range);
-  while (it) {
-    printar_ponto(Lista_t.get(range, it), 0);
-    it = Lista_t.get_next(range, it);
-  }
+  // Lista range = KDTree_t.range_search(arv, ponto_dentro, A, B);
+  // Posic it    = Lista_t.get_first(range);
+  // while (it) {
+  //   printar_ponto(Lista_t.get(range, it), 0);
+  //   it = Lista_t.get_next(range, it);
+  // }
 
-  Lista_t.destruir(range, NULL);
-  free(A);
-  free(B); */
+  // Lista_t.destruir(range, NULL);
+  // free(A);
+  // free(B);
+
+  // Closest Pair
+  Pair closest_pair = KDTree_t.closest_pair(arv, distance_squared);
+  
+  printf("Pontos mais proximos:\n");
+  printf("Distancia: %.2f\n", sqrt(closest_pair.distance));
+  printar_ponto(closest_pair.point1, 0);
+  printar_ponto(closest_pair.point2, 0);
 
   KDTree_t.destroy(arv, free);
 

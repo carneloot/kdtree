@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
@@ -294,6 +295,9 @@ static void __nearest_neighbor_rec_kdtree(
   if (!this)
     return;
 
+  if (this->value == value)
+    return;
+
   unsigned cd = prof % this->dim;
 
   KDTree other = NULL;
@@ -337,20 +341,55 @@ static void __nearest_neighbor_rec_kdtree(
 }
 
 static Pair __nearest_neighbor_kdtree(
-  KDTree this,
+  KDTree _this,
   Item value,
   double (*distance)(const Item a, const Item b, int dim)) {
+  struct KDTree *this = (struct KDTree *) _this;
+  Pair result;
+
   __closest          = NULL;
-  __closest_distance = -1;
+  __closest_distance = INFINITY;
   __nearest_neighbor_rec_kdtree(this, value, distance, 0);
 
-  Pair result = {
-    .distance = __closest_distance,
-    .point1   = (__closest) ? __closest->value : NULL,
-    .point2   = value,
-  };
+  result.distance = __closest_distance;
+  result.point1   = (__closest) ? __closest->value : NULL;
+  result.point2   = value;
 
   return result;
+}
+
+static Pair __closest_pair_rec_kdtree(
+  KDTree _raiz,
+  KDTree _it,
+  Pair entrada,
+  double (*distance)(const Item a, const Item b, int dim)) {
+  struct KDTree *raiz = (struct KDTree *) _raiz;
+  struct KDTree *it   = (struct KDTree *) _it;
+
+  Pair result;
+
+  result = __nearest_neighbor_kdtree(raiz, it->value, distance);
+
+  if (it->left)
+    result = __closest_pair_rec_kdtree(raiz, it->left, result, distance);
+
+  if (it->right)
+    result = __closest_pair_rec_kdtree(raiz, it->right, result, distance);
+
+  return (entrada.distance < result.distance) ? entrada : result;
+}
+
+static Pair __closest_pair_kdtree(
+  KDTree _this, double (*distance)(const Item a, const Item b, int dim)) {
+  struct KDTree *this = (struct KDTree *) _this;
+
+  Pair result = {
+    .distance = INFINITY,
+    .point1   = NULL,
+    .point2   = NULL,
+  };
+
+  return __closest_pair_rec_kdtree(this, this, result, distance);
 }
 
 static void __destroy_rec_kdtree(KDTree _this, void (*destroy)(Item item)) {
@@ -387,4 +426,5 @@ const struct KDTree_t KDTree_t = {  //
   .passe_simetrico  = &__passe_simetrico_kdtree,
   .range_search     = &__range_search_kdtree,
   .nearest_neighbor = &__nearest_neighbor_kdtree,
+  .closest_pair     = &__closest_pair_kdtree,
   .destroy          = &__destroy_kdtree};
