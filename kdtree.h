@@ -2,9 +2,18 @@
 #ifndef __KDTREE_H__
 #define __KDTREE_H__
 
+#include "lista.h"
+
 typedef void *KDTree;
 
 typedef void *Item;
+
+struct Pair {
+  double distance;
+  Item point1, point2;
+};
+
+typedef struct Pair Pair;
 
 struct KDTree_t {
   /**
@@ -51,7 +60,8 @@ struct KDTree_t {
   /**
    * Passa por toda a arvore executando a funcao nos itens
    */
-  void (*passe_simetrico)(KDTree this, void (*executar)(const Item item));
+  void (*passe_simetrico)(
+    KDTree this, void (*executar)(const Item item, unsigned profundade));
 
   /**
    * Pesquisa na arvore 'this' de acordo com um intervalo
@@ -59,9 +69,19 @@ struct KDTree_t {
    * 'dim'. Se 'dim' for -1, checa se o valor esta completamente dentro do
    * intervalo
    */
-  KDTree (*range_search)(
+  Lista (*range_search)(
     KDTree this, int (*dentro)(Item value, int dim, Item rect[]), ...);
-    
+
+  /**
+   * Acha o ponto mais proximo do valor value
+   * A funcao 'distance' acha a distancia entre 'a' e 'b' na dimensao 'dim'. Se
+   * dim for -1, acha a distancia de acordo com todas as dimensoes
+   */
+  Pair (*nearest_neighbor)(
+    KDTree this,
+    Item value,
+    double (*distance)(const Item a, const Item b, int dim));
+
   /**
    * Destroi a arvore
    */

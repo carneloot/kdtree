@@ -199,22 +199,29 @@ static Item __get_kdtree(KDTree _this) {
   return this->value;
 }
 
-static void __passe_simetrico_kdtree(
-  KDTree _this, void (*executar)(const Item item)) {
+static void __passe_simetrico_rec_kdtree(
+  KDTree _this,
+  void (*executar)(const Item item, unsigned prof),
+  unsigned prof) {
   struct KDTree *this = (struct KDTree *) _this;
 
   if (this->left)
-    __passe_simetrico_kdtree(this->left, executar);
+    __passe_simetrico_rec_kdtree(this->left, executar, prof + 1);
 
-  executar(this->value);
+  executar(this->value, prof);
 
   if (this->right)
-    __passe_simetrico_kdtree(this->right, executar);
+    __passe_simetrico_rec_kdtree(this->right, executar, prof + 1);
 }
 
-void __range_search_rec_kdtree(
+static void __passe_simetrico_kdtree(
+  KDTree this, void (*executar)(const Item item, unsigned prof)) {
+  __passe_simetrico_rec_kdtree(this, executar, 0);
+}
+
+static void __range_search_rec_kdtree(
   KDTree _this,
-  KDTree saida,
+  Lista saida,
   Item rect[],
   int (*dentro)(Item value, int dim, Item rect[]),
   unsigned prof) {
@@ -245,23 +252,20 @@ void __range_search_rec_kdtree(
   }
 
   if (dentro(this->value, -1, rect))  // Se o valor esta dentro do ponto
-    __insert_kdtree(saida, this->value);
+    Lista_t.insert(saida, this->value);
 }
 
-KDTree __range_search_kdtree(
+static Lista __range_search_kdtree(
   KDTree _this, int (*dentro)(Item value, int dim, Item rect[]), ...) {
   struct KDTree *this = (struct KDTree *) _this;
 
-  KDTree saida;
+  Lista saida;
   Item *rect;
   va_list list;
 
-  func_compare *funcs = calloc(this->dim, sizeof(func_compare));
-  for (int i = 0; i < this->dim; i++)
-    funcs[i] = this->funcs[i];
+  saida = Lista_t.create();
 
-  saida = __create_aux_kdtree(this->dim, this->check_equal, funcs);
-  rect  = calloc(this->dim, sizeof(Item));
+  rect = calloc(this->dim, sizeof(Item));
 
   va_start(list, dentro);
 
@@ -275,6 +279,78 @@ KDTree __range_search_kdtree(
   free(rect);
 
   return saida;
+}
+
+static struct KDTree *__closest;
+static double __closest_distance;
+
+static void __nearest_neighbor_rec_kdtree(
+  KDTree _this,
+  Item value,
+  double (*distance)(const Item a, const Item b, int dim),
+  unsigned prof) {
+  struct KDTree *this = (struct KDTree *) _this;
+
+  if (!this)
+    return;
+
+  unsigned cd = prof % this->dim;
+
+  KDTree other = NULL;
+
+  if (!__closest) {
+    if (__is_leaf_kdtree(this)) {
+      __closest          = this;
+      __closest_distance = distance(this->value, value, -1);
+      return;
+    }
+
+    if (this->funcs[cd](value, this->value) < 0) {  // Esquerda
+      __nearest_neighbor_rec_kdtree(this->left, value, distance, prof + 1);
+      other = this->right;
+    } else {  // Direita
+      __nearest_neighbor_rec_kdtree(this->right, value, distance, prof + 1);
+      other = this->left;
+    }
+
+    if (!__closest)
+      __nearest_neighbor_rec_kdtree(other, value, distance, prof + 1);
+  }
+
+  double dist_atual, dist_dimensao;
+
+  dist_atual = distance(this->value, value, -1);
+
+  if (dist_atual < __closest_distance) {
+    __closest          = this;
+    __closest_distance = dist_atual;
+  }
+
+  dist_dimensao = distance(this->value, value, cd);
+
+  // Cruza a linha que quebra
+  if (dist_dimensao < __closest_distance) {
+    __nearest_neighbor_rec_kdtree(other, value, distance, prof + 1);
+    // __nearest_neighbor_rec_kdtree(this->left, value, distance, prof + 1);
+    // __nearest_neighbor_rec_kdtree(this->right, value, distance, prof + 1);
+  }
+}
+
+static Pair __nearest_neighbor_kdtree(
+  KDTree this,
+  Item value,
+  double (*distance)(const Item a, const Item b, int dim)) {
+  __closest          = NULL;
+  __closest_distance = -1;
+  __nearest_neighbor_rec_kdtree(this, value, distance, 0);
+
+  Pair result = {
+    .distance = __closest_distance,
+    .point1   = (__closest) ? __closest->value : NULL,
+    .point2   = value,
+  };
+
+  return result;
 }
 
 static void __destroy_rec_kdtree(KDTree _this, void (*destroy)(Item item)) {
@@ -301,13 +377,14 @@ static void __destroy_kdtree(KDTree _this, void (*destroy)(Item item)) {
 }
 
 const struct KDTree_t KDTree_t = {  //
-  .create          = &__create_kdtree,
-  .insert          = &__insert_kdtree,
-  .delete          = &__delete_kdtree,
-  .search          = &__search_kdtree,
-  .get             = &__get_kdtree,
-  .find_min        = &__find_min_kdtree,
-  .is_leaf         = &__is_leaf_kdtree,
-  .passe_simetrico = &__passe_simetrico_kdtree,
-  .range_search    = &__range_search_kdtree,
-  .destroy         = &__destroy_kdtree};
+  .create           = &__create_kdtree,
+  .insert           = &__insert_kdtree,
+  .delete           = &__delete_kdtree,
+  .search           = &__search_kdtree,
+  .get              = &__get_kdtree,
+  .find_min         = &__find_min_kdtree,
+  .is_leaf          = &__is_leaf_kdtree,
+  .passe_simetrico  = &__passe_simetrico_kdtree,
+  .range_search     = &__range_search_kdtree,
+  .nearest_neighbor = &__nearest_neighbor_kdtree,
+  .destroy          = &__destroy_kdtree};
