@@ -6,7 +6,7 @@ OBJS = $(SRCS:%.c=%.o)
 kdtree:	$(OBJS) pontos.h
 	gcc -Wall -lm -g -o $@ $(OBJS)
 
-%.o: %.c
+%.o: %.c pontos.h
 	gcc -c -Wall -lm -g -o $@ $<
 
 .PHONY: remove

@@ -2,11 +2,16 @@
 #ifndef __KDTREE_H__
 #define __KDTREE_H__
 
+#include <stdarg.h>
+#include <stdio.h>
 #include "lista.h"
 
 typedef void *KDTree;
 
+#ifndef ITEM_TYPE
 typedef void *Item;
+#  define ITEM_TYPE
+#endif
 
 struct Pair {
   double distance;
@@ -36,10 +41,11 @@ struct KDTree_t {
   KDTree (*delete)(KDTree this, Item value);
 
   /**
-   * Procura na arvore 'this' o nó com valor 'value'. Usa a funcao check_equal,
-   * passada ao criar a arvore
+   * Procura na arvore 'this' o nó com valor 'value'. Usa a funcao check para
+   * checar o valor
    */
-  KDTree (*search)(KDTree this, Item value);
+  KDTree (*search)(
+    KDTree this, Item value, int (*check)(const void *a, const void *b));
 
   /**
    * Retorna o valor da raiz da KDTree passada.
@@ -61,7 +67,9 @@ struct KDTree_t {
    * Passa por toda a arvore executando a funcao nos itens
    */
   void (*passe_simetrico)(
-    KDTree this, void (*executar)(const Item item, unsigned profundade));
+    KDTree this,
+    void (*executar)(const Item item, unsigned profundidade, va_list list),
+    ...);
 
   /**
    * Pesquisa na arvore 'this' de acordo com um intervalo
@@ -84,6 +92,9 @@ struct KDTree_t {
 
   Pair (*closest_pair)(
     KDTree this, double (*distance)(const Item a, const Item b, int dim));
+
+  void (*generate_dot)(
+    KDTree this, FILE *fp, char *(*to_string)(const Item item));
 
   /**
    * Destroi a arvore

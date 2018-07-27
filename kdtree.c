@@ -1,5 +1,4 @@
 #include <math.h>
-#include <stdarg.h>
 #include <stdlib.h>
 
 #include "kdtree.h"
@@ -163,6 +162,8 @@ static KDTree __delete_rec_kdtree(KDTree _this, Item value, unsigned prof) {
     min         = __find_min_kdtree(this->left, cd);
     this->value = min->value;
     this->left  = __delete_rec_kdtree(this->left, min->value, prof + 1);
+    this->right = this->left;
+    this->left  = NULL;
   }
 
   return this;
@@ -172,27 +173,32 @@ static KDTree __delete_kdtree(KDTree this, Item value) {
   return __delete_rec_kdtree(this, value, 0);
 }
 
-static KDTree __search_rec_kdtree(KDTree _this, Item value, unsigned prof) {
+static KDTree __search_rec_kdtree(
+  KDTree _this,
+  Item value,
+  int (*check)(const void *a, const void *b),
+  unsigned prof) {
   struct KDTree *this = (struct KDTree *) _this;
 
   if (!this)
     return NULL;
 
-  if (this->check_equal(this->value, value))
+  if (check(this->value, value))
     return this;
 
   int indice_func = prof % this->dim;
 
   if (this->funcs[indice_func](value, this->value) < 0)
-    return __search_rec_kdtree(this->left, value, prof + 1);
+    return __search_rec_kdtree(this->left, value, check, prof + 1);
   else
-    return __search_rec_kdtree(this->right, value, prof + 1);
+    return __search_rec_kdtree(this->right, value, check, prof + 1);
 
   return NULL;
 }
 
-static KDTree __search_kdtree(KDTree this, Item value) {
-  return __search_rec_kdtree(this, value, 0);
+static KDTree __search_kdtree(
+  KDTree this, Item value, int (*check)(const void *a, const void *b)) {
+  return __search_rec_kdtree(this, value, check, 0);
 }
 
 static Item __get_kdtree(KDTree _this) {
@@ -202,22 +208,28 @@ static Item __get_kdtree(KDTree _this) {
 
 static void __passe_simetrico_rec_kdtree(
   KDTree _this,
-  void (*executar)(const Item item, unsigned prof),
-  unsigned prof) {
+  void (*executar)(const Item item, unsigned prof, va_list list),
+  unsigned prof,
+  va_list list) {
   struct KDTree *this = (struct KDTree *) _this;
 
   if (this->left)
-    __passe_simetrico_rec_kdtree(this->left, executar, prof + 1);
+    __passe_simetrico_rec_kdtree(this->left, executar, prof + 1, list);
 
-  executar(this->value, prof);
+  executar(this->value, prof, list);
 
   if (this->right)
-    __passe_simetrico_rec_kdtree(this->right, executar, prof + 1);
+    __passe_simetrico_rec_kdtree(this->right, executar, prof + 1, list);
 }
 
 static void __passe_simetrico_kdtree(
-  KDTree this, void (*executar)(const Item item, unsigned prof)) {
-  __passe_simetrico_rec_kdtree(this, executar, 0);
+  KDTree this,
+  void (*executar)(const Item item, unsigned prof, va_list list),
+  ...) {
+  va_list list;
+  va_start(list, executar);
+  __passe_simetrico_rec_kdtree(this, executar, 0, list);
+  va_end(list);
 }
 
 static void __range_search_rec_kdtree(
@@ -389,6 +401,48 @@ static Pair __closest_pair_kdtree(
   return __closest_pair_rec_kdtree(this, this, result, distance);
 }
 
+static void __generate_dot_rec_kdtree(
+  KDTree _this, FILE *fp, char *(*to_string)(const Item item)) {
+  struct KDTree *this = (struct KDTree *) _this;
+
+  char *strA = to_string(this->value);
+  fprintf(fp, "\"%s\" [ label = \"%s\" ];\n", strA, strA);
+
+  if (this->left) {
+    char *strB = to_string(this->left->value);
+
+    fprintf(fp, "\"%s\" -> \"%s\";\n", strA, strB);
+    __generate_dot_rec_kdtree(this->left, fp, to_string);
+
+    free(strB);
+  } else {
+    fprintf(fp, "\"n%s\" [ label = \"nil\", style = invis ];\n", strA);
+    fprintf(fp, "\"%s\" -> \"n%s\" [style = invis];\n", strA, strA);
+  }
+
+  if (this->right) {
+    char *strB = to_string(this->right->value);
+
+    fprintf(fp, "\"%s\" -> \"%s\";\n", strA, strB);
+    __generate_dot_rec_kdtree(this->right, fp, to_string);
+
+    free(strB);
+  } else {
+    fprintf(fp, "\"n%s\" [ label = \"nil\", style = invis ];\n", strA);
+    fprintf(fp, "\"%s\" -> \"n%s\" [style = invis];\n", strA, strA);
+  }
+
+  free(strA);
+}
+
+static void __generate_dot_kdtree(
+  KDTree this, FILE *fp, char *(*to_string)(const Item item)) {
+  fprintf(fp, "digraph T {\n");
+  fprintf(fp, "node [fontname=\"Arial\" ];\n");
+  __generate_dot_rec_kdtree(this, fp, to_string);
+  fprintf(fp, "}\n");
+}
+
 static void __destroy_rec_kdtree(KDTree _this, void (*destroy)(Item item)) {
   struct KDTree *this = (struct KDTree *) _this;
 
@@ -424,4 +478,5 @@ const struct KDTree_t KDTree_t = {  //
   .range_search     = &__range_search_kdtree,
   .nearest_neighbor = &__nearest_neighbor_kdtree,
   .closest_pair     = &__closest_pair_kdtree,
+  .generate_dot     = &__generate_dot_kdtree,
   .destroy          = &__destroy_kdtree};

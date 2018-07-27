@@ -122,6 +122,13 @@ void printar_ponto(const Item _p, unsigned prof) {
   printf("%s%c (%2.2f, %2.2f)\n", tabs, (prof % 2) ? 'y' : 'x', p->x, p->y);
 }
 
+char *ponto_string(const Item _ponto) {
+  struct Point *ponto = (struct Point *) _ponto;
+  char *saida = calloc(8, sizeof(char));
+  sprintf(saida, "(%2d,%2d)", (int) ponto->x, (int) ponto->y);
+  return saida;
+}
+
 int main(int argc, const char *argv[]) {
   unsigned tam = sizeof(points) / sizeof(points[0]);
 
@@ -133,13 +140,11 @@ int main(int argc, const char *argv[]) {
     KDTree_t.insert(arv, newPoint(points[i].x, points[i].y));
 
   // Testes
-  Pair pair = KDTree_t.closest_pair(arv, distance_squared);
+  FILE *dotfile = fopen("graph/graph2.dot", "w");
 
-  printf("===== ARVORE =====\n");
-  printf("Pontos mais proximos:\n");
-  printf("Distancia: %.2f\n", sqrt(pair.distance));
-  printar_ponto(pair.point1, 0);
-  printar_ponto(pair.point2, 0);
+  KDTree_t.generate_dot(arv, dotfile, ponto_string);
+
+  fclose(dotfile);
 
   KDTree_t.destroy(arv, free);
 
