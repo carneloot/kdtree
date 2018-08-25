@@ -1,6 +1,6 @@
 
 
-SRCS = tests.c kdtree.c lista.c dac/closest.c dac/sorts.c
+SRCS = tests.c kdtree.c lista.c
 OBJS = $(SRCS:%.c=%.o)
 
 kdtree:	$(OBJS) pontos.h

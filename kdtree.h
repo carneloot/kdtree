@@ -38,7 +38,7 @@ struct KDTree_t {
   /**
    * Delete recursivamente o nó de valor 'value' da arvore 'this'
    */
-  KDTree (*delete)(KDTree this, Item value);
+  void (*delete)(KDTree this, Item value);
 
   /**
    * Procura na arvore 'this' o nó com valor 'value'. Usa a funcao check para
@@ -64,6 +64,12 @@ struct KDTree_t {
   int (*is_leaf)(KDTree this);
 
   /**
+   * Retorna 1 caso a KDTree indicada esteja vazia.
+   * 0 caso nao esteja.
+   */
+  int (*is_empty)(KDTree this);
+
+  /**
    * Passa por toda a arvore executando a funcao nos itens
    */
   void (*passe_simetrico)(
@@ -78,7 +84,7 @@ struct KDTree_t {
    * intervalo
    */
   Lista (*range_search)(
-    KDTree this, int (*dentro)(Item value, int dim, Item rect[]), ...);
+    KDTree this, int (*dentro)(Item value, int dim, Item ponto_a, Item ponto_b), Item ponto_a, Item ponto_b);
 
   /**
    * Acha o ponto mais proximo do valor value

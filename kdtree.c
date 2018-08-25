@@ -51,6 +51,11 @@ static int __is_leaf_kdtree(KDTree _this) {
   return !(this->left || this->right);
 }
 
+static int __is_empty_kdtree(KDTree _this) {
+  struct KDTree *this = (struct KDTree *) _this;
+  return !(this->value);
+}
+
 static KDTree __minimum_kdtree(KDTree _a, KDTree _b, KDTree _c, unsigned dim) {
   struct KDTree *a = (struct KDTree *) _a;
   struct KDTree *b = (struct KDTree *) _b;
@@ -142,7 +147,10 @@ static KDTree __delete_rec_kdtree(KDTree _this, Item value, unsigned prof) {
 
   // Se estiver nesse node
   if (__is_leaf_kdtree(this)) {
-    free(this);
+    if (prof)
+      free(this);
+    else
+      this->value = NULL;
     return NULL;
   }
 
@@ -169,8 +177,8 @@ static KDTree __delete_rec_kdtree(KDTree _this, Item value, unsigned prof) {
   return this;
 }
 
-static KDTree __delete_kdtree(KDTree this, Item value) {
-  return __delete_rec_kdtree(this, value, 0);
+static void __delete_kdtree(KDTree this, Item value) {
+  __delete_rec_kdtree(this, value, 0);
 }
 
 static KDTree __search_rec_kdtree(
@@ -216,7 +224,8 @@ static void __passe_simetrico_rec_kdtree(
   if (this->left)
     __passe_simetrico_rec_kdtree(this->left, executar, prof + 1, list);
 
-  executar(this->value, prof, list);
+  if (this->value)
+    executar(this->value, prof, list);
 
   if (this->right)
     __passe_simetrico_rec_kdtree(this->right, executar, prof + 1, list);
@@ -232,11 +241,13 @@ static void __passe_simetrico_kdtree(
   va_end(list);
 }
 
+typedef int (*__range_search_dentro)(Item value, int dim, Item ponto_a, Item ponto_b);
+
 static void __range_search_rec_kdtree(
   KDTree _this,
   Lista saida,
-  Item rect[],
-  int (*dentro)(Item value, int dim, Item rect[]),
+  Item ponto_a, Item ponto_b,
+  __range_search_dentro dentro,
   unsigned prof) {
   struct KDTree *this = (struct KDTree *) _this;
 
@@ -248,48 +259,35 @@ static void __range_search_rec_kdtree(
 
   // Checa a posicao do atributo 'cd' em relacao com a area
   cd    = prof % this->dim;
-  local = dentro(this->value, cd, rect);
+  local = dentro(this->value, cd, ponto_a, ponto_b);
 
   // Esquerda
   if (local < 0)
-    __range_search_rec_kdtree(this->right, saida, rect, dentro, prof + 1);
+    __range_search_rec_kdtree(this->right, saida, ponto_a, ponto_b, dentro, prof + 1);
 
   // Direita
   else if (local > 0)
-    __range_search_rec_kdtree(this->left, saida, rect, dentro, prof + 1);
+    __range_search_rec_kdtree(this->left, saida, ponto_a, ponto_b, dentro, prof + 1);
 
   // Dentro
   else {
-    __range_search_rec_kdtree(this->left, saida, rect, dentro, prof + 1);
-    __range_search_rec_kdtree(this->right, saida, rect, dentro, prof + 1);
+    __range_search_rec_kdtree(this->left, saida, ponto_a, ponto_b, dentro, prof + 1);
+    __range_search_rec_kdtree(this->right, saida, ponto_a, ponto_b, dentro, prof + 1);
   }
 
-  if (dentro(this->value, -1, rect))  // Se o valor esta dentro do ponto
+  if (dentro(this->value, -1, ponto_a, ponto_b))  // Se o valor esta dentro do retangulo
     Lista_t.insert(saida, this->value);
 }
 
 static Lista __range_search_kdtree(
-  KDTree _this, int (*dentro)(Item value, int dim, Item rect[]), ...) {
+  KDTree _this, __range_search_dentro dentro, Item ponto_a, Item ponto_b) {
   struct KDTree *this = (struct KDTree *) _this;
 
   Lista saida;
-  Item *rect;
-  va_list list;
 
   saida = Lista_t.create();
 
-  rect = calloc(this->dim, sizeof(Item));
-
-  va_start(list, dentro);
-
-  for (int i = 0; i < this->dim; i++)
-    rect[i] = va_arg(list, Item);
-
-  va_end(list);
-
-  __range_search_rec_kdtree(this, saida, rect, dentro, 0);
-
-  free(rect);
+  __range_search_rec_kdtree(this, saida, ponto_a, ponto_b, dentro, 0);
 
   return saida;
 }
@@ -402,44 +400,42 @@ static Pair __closest_pair_kdtree(
 }
 
 static void __generate_dot_rec_kdtree(
-  KDTree _this, FILE *fp, char *(*to_string)(const Item item)) {
-  struct KDTree *this = (struct KDTree *) _this;
+  struct KDTree *this, FILE *fp, char *(*to_string)(const Item item), int prof) {
 
-  char *strA = to_string(this->value);
-  fprintf(fp, "\"%s\" [ label = \"%s\" ];\n", strA, strA);
-
-  if (this->left) {
-    char *strB = to_string(this->left->value);
-
-    fprintf(fp, "\"%s\" -> \"%s\";\n", strA, strB);
-    __generate_dot_rec_kdtree(this->left, fp, to_string);
-
-    free(strB);
-  } else {
-    fprintf(fp, "\"n%s\" [ label = \"nil\", style = invis ];\n", strA);
-    fprintf(fp, "\"%s\" -> \"n%s\" [style = invis];\n", strA, strA);
+  if (this->value) {
+    char *strA = to_string(this->value);
+    fprintf(
+      fp, "\"%p\" [label=\"%d\\n%s\"];\n", this->value, prof % this->dim, strA);
+    free(strA);
   }
 
-  if (this->right) {
-    char *strB = to_string(this->right->value);
+  struct KDTree *other = this->left;
 
-    fprintf(fp, "\"%s\" -> \"%s\";\n", strA, strB);
-    __generate_dot_rec_kdtree(this->right, fp, to_string);
+  for (int i = 0; i < 2; i++) {
+    if (other) {
+      char *strB = to_string(other->value);
 
-    free(strB);
-  } else {
-    fprintf(fp, "\"n%s\" [ label = \"nil\", style = invis ];\n", strA);
-    fprintf(fp, "\"%s\" -> \"n%s\" [style = invis];\n", strA, strA);
+      fprintf(fp, "\"%p\" -> \"%p\";\n", this->value, other->value);
+      __generate_dot_rec_kdtree(other, fp, to_string, prof + 1);
+
+      free(strB);
+    } else {
+      fprintf(fp, "\"n%p\" [label=\"nil\",style=invis];\n", this->value);
+      fprintf(
+        fp, "\"%p\" -> \"n%p\"[style=invis];\n", this->value, this->value);
+    }
+    other = this->right;
   }
 
-  free(strA);
 }
 
 static void __generate_dot_kdtree(
-  KDTree this, FILE *fp, char *(*to_string)(const Item item)) {
+  KDTree _this, FILE *fp, char *(*to_string)(const Item item)) {
+  struct KDTree *this = (struct KDTree *) _this;
   fprintf(fp, "digraph T {\n");
-  fprintf(fp, "node [fontname=\"Arial\" ];\n");
-  __generate_dot_rec_kdtree(this, fp, to_string);
+  fprintf(fp, "node [fontname=\"Arial\"];\n");
+  fprintf(fp, "\"root\" -> \"%p\";\n", (this->value) ? this->value : "");
+  __generate_dot_rec_kdtree(this, fp, to_string, 0);
   fprintf(fp, "}\n");
 }
 
@@ -473,6 +469,7 @@ const struct KDTree_t KDTree_t = {  //
   .search           = &__search_kdtree,
   .get              = &__get_kdtree,
   .find_min         = &__find_min_kdtree,
+  .is_empty         = &__is_empty_kdtree,
   .is_leaf          = &__is_leaf_kdtree,
   .passe_simetrico  = &__passe_simetrico_kdtree,
   .range_search     = &__range_search_kdtree,

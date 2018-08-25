@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dac/closest.h"
 #include "kdtree.h"
 #include "lista.h"
 
@@ -11,12 +10,6 @@
 #define max(a, b) ((a > b) ? (a) : (b))
 #define mod(a) ((a < 0) ? (-a) : (a))
 #define sqr(a) ((a) * (a))
-
-#define TREE 0
-#define ARRAY 1
-
-#define TIPO TREE
-// #define TIPO ARRAY
 
 struct Point {
   double x, y;
@@ -53,13 +46,12 @@ int equal_points(const void *_a, const void *_b) {
   return (a->y == b->y && a->x == b->x);
 }
 
-int ponto_dentro(Item _value, int dim, Item rect[]) {
+int ponto_dentro(Item _value, int dim, Item _a, Item _b) {
   struct Point *value = _value;
 
   double minX, maxX, minY, maxY;
-  struct Point *a, *b;
-  a = rect[0];
-  b = rect[1];
+  Point a = _a;
+  Point b = _b;
 
   minX = min(a->x, b->x);
   maxX = max(a->x, b->x);
@@ -132,7 +124,6 @@ char *ponto_string(const Item _ponto) {
 int main(int argc, const char *argv[]) {
   unsigned tam = sizeof(points) / sizeof(points[0]);
 
-#if TIPO == TREE
   KDTree arv = KDTree_t.create(2, equal_points, compareX, compareY);
 
   // Insercao dos pontos
@@ -147,26 +138,6 @@ int main(int argc, const char *argv[]) {
   fclose(dotfile);
 
   KDTree_t.destroy(arv, free);
-
-#endif
-#if TIPO == ARRAY
-
-  Point vector[tam];
-
-  for (int i = 0; i < tam; i++)
-    vector[i] = newPoint(points[i].x, points[i].y);
-
-  ClosestPair pair;
-
-  pair = find_closest((void **) vector, tam);
-
-  printf("===== DIVIDE AND CONQUER =====\n");
-  printf("Pontos mais proximos:\n");
-  printf("Distancia: %.2f\n", pair.dist);
-  printar_ponto(pair.point1, 0);
-  printar_ponto(pair.point2, 0);
-
-#endif
 
   return 0;
 }
